@@ -12,9 +12,11 @@ func handleRequests() {
 	r := mux.NewRouter().StrictSlash(true)
 	r.Methods("OPTIONS").HandlerFunc(HandleOptions)
 	r.HandleFunc("/getRezepte", getRezepte).Methods("GET")
+	r.HandleFunc("/getRezeptePage", getRezeptePage).Methods("POST")
 	r.HandleFunc("/deleteRezepte", deleteRezepte).Methods("DELETE")
 	r.HandleFunc("/createRezepte", createRezepte).Methods("POST")
 	r.HandleFunc("/updateRezept", updateRezept).Methods("PATCH")
+	r.HandleFunc("/countItems", countItems).Methods("GET")
 	r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		t, _ := route.GetPathTemplate()
 		m, _ := route.GetMethods()

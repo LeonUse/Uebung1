@@ -1,4 +1,4 @@
-import { DataGrid, GridColDef, GridSelectionModel, GridValueGetterParams } from '@mui/x-data-grid';
+import { DataGrid, GridColDef, GridSelectionModel, GridToolbarColumnsButton, GridToolbarContainer, GridToolbarDensitySelector, GridToolbarFilterButton, GridValueGetterParams } from '@mui/x-data-grid';
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import { styled } from '@mui/material/styles';
@@ -8,28 +8,29 @@ import Button from '@mui/material/Button';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
+
 export default function List1() {
 
-    const [list1, setList1] = React.useState([]);
+    const [list1, setList1] = React.useState<rezept[]>([]);
     const [selectedRowsData, setSelectedRowsData] = React.useState<GridSelectionModel>([]);
-    const [rowID, setRowID] = React.useState(1);
-
 
     const navigate = useNavigate();
-
-    const handleDetail = (list1: any, id: number) => {
-        navigate('/updateItem', { state: { list1, id } });
+    const handleDetail = (list1: rezept) => {
+        navigate('/updateItem', { state: { list1 } });
     }
 
     const getList = async () => {
         const response = await fetch("http://localhost:9000/getRezepte", { method: 'GET' }).then((response) => response.json());
         setList1(response);
+        console.log("Liste", list1);
     };
 
 
     React.useEffect(() => {
         getList();
     }, []);
+
+
 
     const Item = styled(Paper)(({ theme }) => ({
         backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
@@ -43,7 +44,7 @@ export default function List1() {
         {
             field: 'name',
             headerName: 'Name',
-            width: 150,
+            width: 300,
             editable: true,
         },
         {
@@ -83,9 +84,20 @@ export default function List1() {
     };
 
     const handleRowClick = (params: any) => {
-        handleDetail(list1, params.id - 1);
+        console.log("Row:", params.row);
+        handleDetail(params.row);
 
     };
+    function CustomToolbar() {
+        return (
+            <GridToolbarContainer>
+                <GridToolbarColumnsButton />
+                <GridToolbarDensitySelector />
+                <GridToolbarFilterButton />
+            </GridToolbarContainer>
+        );
+    }
+
 
     return (
         <>
@@ -110,6 +122,10 @@ export default function List1() {
                     checkboxSelection
                     onSelectionModelChange={(ids: GridSelectionModel) => onRowsSelectionHandler(ids)}
                     onRowClick={handleRowClick}
+                    components={{
+                        Toolbar: CustomToolbar,
+                    }}
+
                 />
             </Box>
         </>

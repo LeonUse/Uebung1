@@ -13,18 +13,6 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-interface RezeptName {
-    name: string
-}
-interface RezeptDauer {
-    dauer: string
-}
-interface RezeptKosten {
-    kosten: string
-}
-interface RezeptAnleitung {
-    anleitung: string
-}
 
 export default function AddItem() {
 
@@ -39,7 +27,6 @@ export default function AddItem() {
 
     const handleChangeName = (prop: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
         setName({ ...name, [prop]: event.target.value });
-
     };
 
     const handleChangeDauer = (prop: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,10 +43,6 @@ export default function AddItem() {
     };
 
     const handleBack = useCallback(() => navigate('/list 1', { replace: true }), [navigate]);
-
-    function timeout(delay: number) {
-        return new Promise(res => setTimeout(res, delay));
-    }
 
     const speichern = async () => {
 
@@ -78,7 +61,6 @@ export default function AddItem() {
             const response = await fetch("http://localhost:9000/createRezepte", { method: 'POST', body: JSON.stringify(values) }).then((response) => response.json());
             setError(false);
             setSuccess(true);
-            await timeout(1000);
             handleBack();
         } else {
             setSuccess(false);

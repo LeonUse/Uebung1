@@ -1,4 +1,14 @@
-import { DataGrid, GridColDef, GridSelectionModel, GridValueGetterParams } from '@mui/x-data-grid';
+import {
+    DataGrid,
+    GridToolbarContainer,
+    GridToolbarColumnsButton,
+    GridToolbarFilterButton,
+    GridToolbarDensitySelector,
+    GridSelectionModel,
+    GridColDef,
+    GridFilterModel,
+    GridFilterItem,
+} from '@mui/x-data-grid';
 import * as React from 'react';
 import Box from '@mui/material/Box';
 import { styled } from '@mui/material/styles';
@@ -7,42 +17,46 @@ import Paper from '@mui/material/Paper';
 import Button from '@mui/material/Button';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import MyFilterPanel2 from '../multiFilter/myFilterPanel';
+import { GlobalContextManager, GlobalContextProvider } from '../globalContext/globalContext'
+
 
 export default function List2() {
-    const [list1, setList1] = React.useState([]);
-    const [selectedRowsData, setSelectedRowsData] = React.useState<GridSelectionModel>([]);
-    const [rowID, setRowID] = React.useState(1);
-
-
-    const navigate = useNavigate();
-
-    const handleDetail = (list1: any, id: number) => {
-        navigate('/updateItem', { state: { list1, id } });
-    }
-
-    const getList = async () => {
-        const response = await fetch("http://localhost:9000/getRezepte", { method: 'GET' }).then((response) => response.json());
-        setList1(response);
-    };
-
 
     React.useEffect(() => {
-        getList();
+        console.log("mount list2");
+
+        return () => { console.log("destroy list2") }
     }, []);
 
-    const Item = styled(Paper)(({ theme }) => ({
-        backgroundColor: theme.palette.mode === 'dark' ? '#1A2027' : '#fff',
-        ...theme.typography.body2,
-        padding: theme.spacing(1),
-        textAlign: 'center',
-        color: theme.palette.text.secondary,
-    }));
+    const { globalContextFilterRows } = React.useContext(GlobalContextManager);
+    const [filterRows, setFilterRows] = React.useState<FilterRow[]>(globalContextFilterRows);
+
+    const [list1, setList1] = React.useState<rezept[]>([{ id: 0, name: "", dauer: "", kosten: "", anleitung: "" }]);
+    const [selectedRowsData, setSelectedRowsData] = React.useState<GridSelectionModel>([]);
+    const [page, setPage] = React.useState<number>(0);
+    const [numberItems, setNumberItems] = React.useState<number>(5);
+    const [start, setStart] = React.useState<number>(0);
+    const [totalItems, setTotalItems] = React.useState<number>(0);
+
+    const [queryOptions, setQueryOptions] = React.useState<GridFilterItem>({
+        columnField: "",
+        operatorValue: "",
+        id: 0,
+        value: "",
+    });
+    const [sortModel, setSortModel] = React.useState([
+        {
+            field: '',
+            sort: '',
+        },
+    ]);
 
     const columns: GridColDef[] = [
         {
             field: 'name',
             headerName: 'Name',
-            width: 150,
+            width: 300,
             editable: true,
         },
         {
@@ -70,27 +84,105 @@ export default function List2() {
         },
     ];
 
+
+    function filterPanel() {
+        return <MyFilterPanel2 columns={columns} />
+    }
+
+    const navigate = useNavigate();
+    const handleDetail = (list1: rezept) => {
+        navigate('/updateItem', { state: { list1 } });
+    }
+
+    React.useEffect(() => {
+        getDataCount();
+        getData(numberItems, start, sortModel, queryOptions);
+    }, [page, sortModel, numberItems, queryOptions]);
+
+    React.useEffect(() => {
+        console.log("SelectedRows", selectedRowsData);
+    }, [selectedRowsData]);
+
+    function CustomToolbar() {
+        return (
+            <GridToolbarContainer>
+                <GridToolbarColumnsButton />
+                <GridToolbarDensitySelector />
+                <GridToolbarFilterButton />
+            </GridToolbarContainer>
+        );
+    }
+
+    const getData = async (numberItems: number, start: number, sortmodel: any, queryOptions: GridFilterItem) => {
+
+        const backendData = {
+            numberItems: numberItems,
+            start: start,
+            field: sortmodel[0].field,
+            sort: sortmodel[0].sort,
+            // filters: filterRows
+        };
+
+        console.log("backendData", backendData);
+        const response = await fetch("http://localhost:9000/getRezeptePage", { method: 'POST', body: JSON.stringify(backendData) }).then((response) => response.json());
+        setList1(response);
+    }
+
+    const getDataCount = async () => {
+        const response = await fetch("http://localhost:9000/countItems", { method: 'GET' }).then((response) => response.json());
+        setTotalItems(response);
+    };
+
     const deleteRezepte = async (id: GridSelectionModel) => {
-        console.log(id);
         const response = await fetch("http://localhost:9000/deleteRezepte?id=" + id, { method: 'DELETE' }).then((response) => response.json());
-        getList();
+        getDataCount();
+        getData(numberItems, start, sortModel, queryOptions);
+
     };
 
     const onRowsSelectionHandler = (ids: GridSelectionModel) => {
         setSelectedRowsData(ids);
-        console.log(ids);
     };
 
     const handleRowClick = (params: any) => {
-        handleDetail(list1, params.id - 1);
-
+        console.log("Row:", params.row);
+        handleDetail(params.row);
     };
+
+    const handlePageChange = (params: any) => {
+        if (params > page) {
+            setStart(start + numberItems);
+        } else {
+            if (start - numberItems > 0) {
+                setStart(start - numberItems);
+            } else {
+                setStart(0);
+            }
+        }
+        setPage(params);
+    };
+
+    const handleSortMode = (params: any) => {
+        setSortModel(params);
+        console.log("SortMode", params);
+    };
+
+    const handlePageSizeChange = (params: any) => {
+        setNumberItems(params);
+        console.log("Params", params);
+        console.log("NumberItems", numberItems);
+    };
+
+    const onFilterChange = React.useCallback((filterModel: GridFilterModel) => {
+        console.log(filterModel);
+        setQueryOptions(filterModel.items[0]);
+    }, []);
+
 
     return (
         <>
             <h1>Page mit Pagination</h1>
-
-            <Box sx={{ height: 400, width: '100%', marginTop: 10 }}>
+            <Box sx={{ width: '100%', marginTop: 10 }}>
                 <Grid alignContent="center" container rowSpacing={1} columnSpacing={{ xs: 1, sm: 2, md: 3 }} marginBottom="20px">
                     <Grid item xs={6}>
                         <Link to="/add" style={{ textDecoration: 'none' }}>
@@ -104,15 +196,29 @@ export default function List2() {
                 <DataGrid
                     rows={list1}
                     columns={columns}
-                    pageSize={5}
-                    rowsPerPageOptions={[5]}
-                    disableSelectionOnClick
-                    experimentalFeatures={{ newEditingApi: true }}
-                    checkboxSelection
+                    autoHeight
+                    paginationMode="server"
+                    filterMode='server'
+                    onPageSizeChange={handlePageSizeChange}
+                    rowCount={totalItems}
+                    pageSize={numberItems}
+                    rowsPerPageOptions={[2, 3, 5]}
+                    pagination
+                    density='comfortable'
+                    onSortModelChange={handleSortMode}
+                    onPageChange={handlePageChange}
                     onSelectionModelChange={(ids: GridSelectionModel) => onRowsSelectionHandler(ids)}
                     onRowClick={handleRowClick}
+                    disableSelectionOnClick
+                    checkboxSelection
+                    onFilterModelChange={onFilterChange}
+                    components={{
+                        Toolbar: CustomToolbar,
+                        FilterPanel: filterPanel,
+                    }}
                 />
             </Box>
         </>
     )
 }
+

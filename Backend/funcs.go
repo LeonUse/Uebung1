@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -20,6 +21,21 @@ type Rezept struct {
 	Dauer     float32 `json:"dauer"`
 	Kosten    float32 `json:"kosten"`
 	Anleitung string  `json:"anleitung"`
+}
+
+type Pagination struct {
+	Start       int `json:"start"`
+	NumberItems int `json:"numberItems"`
+}
+
+type Filter struct {
+	NumberItems   int    `json:"numberItems"`
+	Start         int    `json:"start"`
+	Field         string `json:"field"`
+	Sort          string `json:"sort"`
+	ColumnField   string `json:"columnField"`
+	OperatorValue string `json:"operatorValue"`
+	FilterValue   string `json:"filterValue"`
 }
 
 func ConnectDB() {
@@ -61,6 +77,7 @@ func HandleOptions(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRezepte(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getRezepte aufgerufen")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE")
 	rows, err := DB.Query("SELECT * FROM rezepte")
@@ -143,4 +160,91 @@ func updateRezept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	RespondWithJSON(w, http.StatusOK, err)
+}
+
+func getRezeptePage(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("getRezeptePage aufgerufen")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE")
+
+	filter := Filter{}
+	startQuery := "SELECT * FROM rezepte"
+	json.NewDecoder(r.Body).Decode(&filter)
+	fmt.Println("Body Filter:", filter)
+
+	//Alle Operatoren für Texte
+	if filter.OperatorValue == "contains" {
+		filter := " WHERE " + filter.ColumnField + " like \"%" + filter.FilterValue + "%\""
+		startQuery = startQuery + filter
+	}
+
+	if filter.OperatorValue == "equals" {
+		filter := " WHERE " + filter.ColumnField + " = \"" + filter.FilterValue + "\""
+		startQuery = startQuery + filter
+	}
+
+	if filter.OperatorValue == "startsWith" {
+		filter := " WHERE " + filter.ColumnField + " like \"" + filter.FilterValue + "%\""
+		startQuery = startQuery + filter
+	}
+
+	if filter.OperatorValue == "endsWith" {
+		filter := " WHERE " + filter.ColumnField + " like \"%" + filter.FilterValue + "\""
+		startQuery = startQuery + filter
+	}
+
+	//Alle Operatoren für Zahlen
+	if filter.FilterValue == "" {
+		filter.FilterValue = "0"
+	}
+	if filter.OperatorValue == "=" || filter.OperatorValue == "<" || filter.OperatorValue == ">" || filter.OperatorValue == "<=" || filter.OperatorValue == ">=" || filter.OperatorValue == "!=" {
+		filter := " WHERE " + filter.ColumnField + " " + filter.OperatorValue + " " + filter.FilterValue
+		startQuery = startQuery + filter
+	}
+
+	if filter.Sort != "" {
+		sort := " ORDER BY " + filter.Field + " " + filter.Sort
+		startQuery = startQuery + sort
+	}
+
+	rezepte := make([]Rezept, 0)
+	rezept := Rezept{}
+
+	fmt.Println("Query:", startQuery+" LIMIT "+strconv.FormatInt(int64(filter.NumberItems), 10)+" OFFSET "+strconv.FormatInt(int64(filter.Start), 10))
+
+	rows, err := DB.Query(startQuery + " LIMIT " + strconv.FormatInt(int64(filter.NumberItems), 10) + " OFFSET " + strconv.FormatInt(int64(filter.Start), 10))
+
+	if err != nil {
+		fmt.Println("Fehler bei getRezeptePage:", err)
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		if err := rows.Scan(&rezept.ID, &rezept.Name, &rezept.Dauer, &rezept.Kosten, &rezept.Anleitung); err != nil {
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		rezepte = append(rezepte, rezept)
+	}
+	if err := rows.Err(); err != nil {
+		fmt.Println("Fehler bei getRezeptePage:", err)
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, rezepte)
+}
+
+func countItems(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE")
+	var counter int
+	err := DB.QueryRow("SELECT COUNT(*) FROM rezepte").Scan(&counter)
+	if err != nil {
+		log.Println("Fehler bei countItems:", err)
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, counter)
 }

@@ -13,8 +13,9 @@ function App() {
       <BrowserRouter>
         <Navbar />
         <Routes>
-          <Route path='/list 1' element={<List1 />} />
+          <Route path='/' element={<List2 />} />
           <Route path='/list 2' element={<List2 />} />
+          <Route path='/list 1' element={<List1 />} />
           <Route path='/add' element={<ADD />} />
           <Route path='/updateItem' element={<UpdateItem />} />
         </Routes>

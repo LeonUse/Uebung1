@@ -14,34 +14,21 @@ import CloseIcon from '@mui/icons-material/Close'
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-interface RezeptName {
-    name: string
-}
-interface RezeptDauer {
-    dauer: string
-}
-interface RezeptKosten {
-    kosten: string
-}
-interface RezeptAnleitung {
-    anleitung: string
-}
 
 export default function UpdateItem() {
     const navigate = useNavigate();
     const { state } = useLocation();
-    const { list1, id } = state || {};
+    const { list1 } = state || {};
 
-
-    const [name, setName] = React.useState<RezeptName>({ name: list1[id].name });
-    const [dauer, setDauer] = React.useState<RezeptDauer>({ dauer: list1[id].dauer });
-    const [kosten, setKosten] = React.useState<RezeptKosten>({ kosten: list1[id].kosten });
-    const [anleitung, setAnleitung] = React.useState<RezeptAnleitung>({ anleitung: list1[id].anleitung });
+    console.log("Daten updateItem", list1);
+    const [name, setName] = React.useState<RezeptName>({ name: list1.name });
+    const [dauer, setDauer] = React.useState<RezeptDauer>({ dauer: list1.dauer });
+    const [kosten, setKosten] = React.useState<RezeptKosten>({ kosten: list1.kosten });
+    const [anleitung, setAnleitung] = React.useState<RezeptAnleitung>({ anleitung: list1.anleitung });
     const [change, setChange] = React.useState<boolean>(true);
     const [buttonText, setButtonText] = React.useState<string>("Bearbeiten");
     const [error, setError] = React.useState<boolean>(false);
     const [success, setSuccess] = React.useState<boolean>(false);
-
 
     const handleChangeName = (prop: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
         setName({ ...name, [prop]: event.target.value });
@@ -63,7 +50,7 @@ export default function UpdateItem() {
 
     };
 
-    const handleBack = useCallback(() => navigate('/list 1', { replace: true }), [navigate]);
+    const handleBack = useCallback(() => navigate('/list 2', { replace: true }), [navigate]);
 
     const startUpdate = () => {
         setChange(!change);
@@ -80,7 +67,7 @@ export default function UpdateItem() {
         let kostenn: number = +kosten.kosten;
 
         const values = {
-            id: id + 1,
+            id: list1.id,
             name: name.name,
             dauer: dauern,
             kosten: kostenn,
