@@ -18,7 +18,9 @@ import Button from '@mui/material/Button';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import MyFilterPanel2 from '../multiFilter/myFilterPanel';
-import { GlobalContextManager, GlobalContextProvider } from '../globalContext/globalContext'
+import { GlobalContextManager, GlobalContextProvider, GlobalContextInterface } from '../globalContext/globalContext'
+import Liste2DataGrid from '../dataGrid/liste2DataGrid';
+import { json } from 'stream/consumers';
 
 
 export default function List2() {
@@ -28,9 +30,16 @@ export default function List2() {
 
         return () => { console.log("destroy list2") }
     }, []);
+    // const [filterRows, setFilterRows] = React.useState<FilterRow[]>(globalContextFilterRows);
 
-    const { globalContextFilterRows } = React.useContext(GlobalContextManager);
-    const [filterRows, setFilterRows] = React.useState<FilterRow[]>(globalContextFilterRows);
+    const { globalContextFilterRows, operatorConnector } = React.useContext(GlobalContextManager);
+
+
+    React.useEffect(() => {
+        console.log("globalContextFilterRows liste2", globalContextFilterRows)
+    }, [globalContextFilterRows]);
+
+
 
     const [list1, setList1] = React.useState<rezept[]>([{ id: 0, name: "", dauer: "", kosten: "", anleitung: "" }]);
     const [selectedRowsData, setSelectedRowsData] = React.useState<GridSelectionModel>([]);
@@ -45,82 +54,35 @@ export default function List2() {
         id: 0,
         value: "",
     });
-    const [sortModel, setSortModel] = React.useState([
+
+    const [sortModel, setSortModel] = React.useState<SortModel[]>([
         {
             field: '',
             sort: '',
         },
     ]);
 
-    const columns: GridColDef[] = [
-        {
-            field: 'name',
-            headerName: 'Name',
-            width: 300,
-            editable: true,
-        },
-        {
-            field: 'dauer',
-            headerName: 'Dauer in Minuten',
-            type: 'number',
-            width: 150,
-            editable: true,
-
-        },
-        {
-            field: 'kosten',
-            headerName: 'Grobe Kosten in €',
-            type: 'number',
-            width: 180,
-            editable: true,
-
-        },
-        {
-            field: 'anleitung',
-            headerName: 'Anleitung',
-            description: 'This column has a value getter and is not sortable.',
-            sortable: false,
-            width: 550,
-        },
-    ];
-
-
-    function filterPanel() {
-        return <MyFilterPanel2 columns={columns} />
-    }
-
-    const navigate = useNavigate();
-    const handleDetail = (list1: rezept) => {
-        navigate('/updateItem', { state: { list1 } });
-    }
 
     React.useEffect(() => {
         getDataCount();
-        getData(numberItems, start, sortModel, queryOptions);
-    }, [page, sortModel, numberItems, queryOptions]);
+        getData(numberItems, start, sortModel);
+    }, [page, sortModel, numberItems, queryOptions, globalContextFilterRows, operatorConnector]);
 
-    React.useEffect(() => {
-        console.log("SelectedRows", selectedRowsData);
-    }, [selectedRowsData]);
+    // React.useEffect(() => {
+    //     console.log("SelectedRows", selectedRowsData);
+    // }, [selectedRowsData]);
 
-    function CustomToolbar() {
-        return (
-            <GridToolbarContainer>
-                <GridToolbarColumnsButton />
-                <GridToolbarDensitySelector />
-                <GridToolbarFilterButton />
-            </GridToolbarContainer>
-        );
-    }
 
-    const getData = async (numberItems: number, start: number, sortmodel: any, queryOptions: GridFilterItem) => {
+
+    const getData = async (numberItems: number, start: number, sortmodel: any) => {
 
         const backendData = {
             numberItems: numberItems,
             start: start,
             field: sortmodel[0].field,
             sort: sortmodel[0].sort,
-            // filters: filterRows
+            operatorConnector: operatorConnector,
+            filters: globalContextFilterRows,
         };
 
         console.log("backendData", backendData);
@@ -136,53 +98,21 @@ export default function List2() {
     const deleteRezepte = async (id: GridSelectionModel) => {
         const response = await fetch("http://localhost:9000/deleteRezepte?id=" + id, { method: 'DELETE' }).then((response) => response.json());
         getDataCount();
-        getData(numberItems, start, sortModel, queryOptions);
+        getData(numberItems, start, sortModel);
 
     };
 
-    const onRowsSelectionHandler = (ids: GridSelectionModel) => {
-        setSelectedRowsData(ids);
-    };
 
-    const handleRowClick = (params: any) => {
-        console.log("Row:", params.row);
-        handleDetail(params.row);
-    };
-
-    const handlePageChange = (params: any) => {
-        if (params > page) {
-            setStart(start + numberItems);
-        } else {
-            if (start - numberItems > 0) {
-                setStart(start - numberItems);
-            } else {
-                setStart(0);
-            }
-        }
-        setPage(params);
-    };
-
-    const handleSortMode = (params: any) => {
-        setSortModel(params);
-        console.log("SortMode", params);
-    };
-
-    const handlePageSizeChange = (params: any) => {
-        setNumberItems(params);
-        console.log("Params", params);
-        console.log("NumberItems", numberItems);
-    };
-
-    const onFilterChange = React.useCallback((filterModel: GridFilterModel) => {
-        console.log(filterModel);
-        setQueryOptions(filterModel.items[0]);
-    }, []);
+    // const onFilterChange = React.useCallback((filterModel: GridFilterModel) => {
+    //     console.log(filterModel);
+    //     setQueryOptions(filterModel.items[0]);
+    // }, []);
 
 
     return (
         <>
-            <h1>Page mit Pagination</h1>
-            <Box sx={{ width: '100%', marginTop: 10 }}>
+            <h1>Verwalte deine Rezepte!</h1>
+            <Box sx={{ width: '100%', marginTop: 5 }}>
                 <Grid alignContent="center" container rowSpacing={1} columnSpacing={{ xs: 1, sm: 2, md: 3 }} marginBottom="20px">
                     <Grid item xs={6}>
                         <Link to="/add" style={{ textDecoration: 'none' }}>
@@ -193,29 +123,9 @@ export default function List2() {
                         <Button variant="contained" onClick={(e) => deleteRezepte(selectedRowsData)}>Ausgewählte Rezepte löschen</Button>
                     </Grid>
                 </Grid>
-                <DataGrid
-                    rows={list1}
-                    columns={columns}
-                    autoHeight
-                    paginationMode="server"
-                    filterMode='server'
-                    onPageSizeChange={handlePageSizeChange}
-                    rowCount={totalItems}
-                    pageSize={numberItems}
-                    rowsPerPageOptions={[2, 3, 5]}
-                    pagination
-                    density='comfortable'
-                    onSortModelChange={handleSortMode}
-                    onPageChange={handlePageChange}
-                    onSelectionModelChange={(ids: GridSelectionModel) => onRowsSelectionHandler(ids)}
-                    onRowClick={handleRowClick}
-                    disableSelectionOnClick
-                    checkboxSelection
-                    onFilterModelChange={onFilterChange}
-                    components={{
-                        Toolbar: CustomToolbar,
-                        FilterPanel: filterPanel,
-                    }}
+                <Liste2DataGrid list1={list1} start={start} totalItems={totalItems} numberItems={numberItems}
+                    selectedRowsData={selectedRowsData} sortModel={sortModel} page={page} setNumberItems={setNumberItems} setPage={setPage}
+                    setSelectedRowsData={setSelectedRowsData} setSortModel={setSortModel} setStart={setStart}
                 />
             </Box>
         </>

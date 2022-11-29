@@ -30,3 +30,7 @@ interface FilterRow {
     hasChanged: boolean
 }
 
+interface SortModel {
+    field: string
+    sort: string
+}

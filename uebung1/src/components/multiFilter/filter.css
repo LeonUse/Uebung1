@@ -1,0 +1,13 @@
+ .MuiTableBody-root {
+     overflow-y: scroll !important;
+     display: block !important;
+ }
+
+ .MuiPaper-root {
+     max-height: 450px !important;
+     display: block !important;
+ }
+
+ .MuiTableBody-root .MuiTableRow-root {
+     display: table;
+ }

@@ -28,14 +28,20 @@ type Pagination struct {
 	NumberItems int `json:"numberItems"`
 }
 
+type Filterpanel struct {
+	Column     string `json:"column"`
+	Operator   string `json:"operator"`
+	InputValue string `json:"inputValue"`
+	HasChanged bool   `json:"hasChanged"`
+}
+
 type Filter struct {
-	NumberItems   int    `json:"numberItems"`
-	Start         int    `json:"start"`
-	Field         string `json:"field"`
-	Sort          string `json:"sort"`
-	ColumnField   string `json:"columnField"`
-	OperatorValue string `json:"operatorValue"`
-	FilterValue   string `json:"filterValue"`
+	NumberItems       int    `json:"numberItems"`
+	Start             int    `json:"start"`
+	Field             string `json:"field"`
+	Sort              string `json:"sort"`
+	OperatorConnector string `json:"operatorConnector"`
+	Filters           []Filterpanel
 }
 
 func ConnectDB() {
@@ -172,34 +178,61 @@ func getRezeptePage(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&filter)
 	fmt.Println("Body Filter:", filter)
 
+	var filtersQuery []string
 	//Alle Operatoren für Texte
-	if filter.OperatorValue == "contains" {
-		filter := " WHERE " + filter.ColumnField + " like \"%" + filter.FilterValue + "%\""
-		startQuery = startQuery + filter
-	}
+	for i := 0; i < len(filter.Filters); i++ {
+		if filter.Filters[i].Operator == "contains" {
+			filtersQuery = append(filtersQuery, filter.Filters[i].Column+" like \"%"+filter.Filters[i].InputValue+"%\"")
 
-	if filter.OperatorValue == "equals" {
-		filter := " WHERE " + filter.ColumnField + " = \"" + filter.FilterValue + "\""
-		startQuery = startQuery + filter
-	}
+			continue
+		}
 
-	if filter.OperatorValue == "startsWith" {
-		filter := " WHERE " + filter.ColumnField + " like \"" + filter.FilterValue + "%\""
-		startQuery = startQuery + filter
-	}
+		if filter.Filters[i].Operator == "equals" {
+			filtersQuery = append(filtersQuery, filter.Filters[i].Column+" = \""+filter.Filters[i].InputValue+"\"")
 
-	if filter.OperatorValue == "endsWith" {
-		filter := " WHERE " + filter.ColumnField + " like \"%" + filter.FilterValue + "\""
-		startQuery = startQuery + filter
-	}
+			continue
+		}
 
-	//Alle Operatoren für Zahlen
-	if filter.FilterValue == "" {
-		filter.FilterValue = "0"
+		if filter.Filters[i].Operator == "startsWith" {
+			filtersQuery = append(filtersQuery, filter.Filters[i].Column+" like \""+filter.Filters[i].InputValue+"%\"")
+			// filter := " WHERE " + filter.ColumnField + " like \"" + filter.FilterValue + "%\""
+
+			continue
+		}
+
+		if filter.Filters[i].Operator == "endsWith" {
+			filtersQuery = append(filtersQuery, filter.Filters[i].Column+" like \"%"+filter.Filters[i].InputValue+"\"")
+			// filter := " WHERE " + filter.ColumnField + " like \"%" + filter.FilterValue + "\""
+
+			continue
+		}
+
+		//Alle Operatoren für Zahlen
+		if filter.Filters[i].InputValue == "" {
+			filter.Filters[i].InputValue = "0"
+		}
+		if filter.Filters[i].Operator == "=" || filter.Filters[i].Operator == "<" || filter.Filters[i].Operator == ">" || filter.Filters[i].Operator == "<=" || filter.Filters[i].Operator == ">=" || filter.Filters[i].Operator == "!=" {
+			filtersQuery = append(filtersQuery, filter.Filters[i].Column+" "+filter.Filters[i].Operator+" "+filter.Filters[i].InputValue)
+			// filter := " WHERE " + filter.Filters[i].Column + " " + filter.Filters[i].Operator + " " + filter.Filters[i].InputValue
+			continue
+		}
+
+		//Operatoren für Zahlen und Strings
+		if filter.Filters[i].Operator == "is empty" {
+			filtersQuery = append(filtersQuery, "LTRIM(RTRIM("+filter.Filters[i].Column+")) = \"\"")
+		}
+		if filter.Filters[i].Operator == "is not empty" {
+			filtersQuery = append(filtersQuery, "LTRIM(RTRIM("+filter.Filters[i].Column+")) != \"\"")
+		}
+		if filter.Filters[i].Operator == "is any" {
+			//Was ist "is any"?
+		}
+
 	}
-	if filter.OperatorValue == "=" || filter.OperatorValue == "<" || filter.OperatorValue == ">" || filter.OperatorValue == "<=" || filter.OperatorValue == ">=" || filter.OperatorValue == "!=" {
-		filter := " WHERE " + filter.ColumnField + " " + filter.OperatorValue + " " + filter.FilterValue
-		startQuery = startQuery + filter
+	// Hier müssen die Filter in die Query
+	if len(filtersQuery) != 0 {
+		justStringFilters := strings.Join(filtersQuery, " "+filter.OperatorConnector+" ")
+		startQuery = startQuery + " WHERE " + justStringFilters
 	}
 
 	if filter.Sort != "" {

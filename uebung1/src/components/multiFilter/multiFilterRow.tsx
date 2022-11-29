@@ -1,5 +1,5 @@
 import ClearIcon from '@mui/icons-material/Clear';
-import { FormControl, InputLabel, OutlinedInput, Select, SelectChangeEvent, TableCell, TableRow } from '@mui/material';
+import { FormControl, InputLabel, OutlinedInput, Select, SelectChangeEvent, TableCell, TableRow, TextField } from '@mui/material';
 import {
     GridColDef
 } from '@mui/x-data-grid';
@@ -21,10 +21,6 @@ export default function MultiFilterRow(props: Props) {
         return () => { console.log("destroy MultifilterRow", props.index) }
     }, []);
 
-    React.useEffect(() => {
-        console.log("props haben sich verändert", props)
-
-    }, [props]);
 
     const operatorsString: string[] = ["contains", "equals", "starts with", "ends with", "is empty", "is not empty", "is any of"];
     const operatorsNumbers: string[] = ["=", "!=", "<", "<=", ">", ">=", "is empty", "is not empty", "is any of"];
@@ -38,6 +34,7 @@ export default function MultiFilterRow(props: Props) {
 
     const handleChangeInput = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInputValue(event.target.value);
+        setHasChanged(true);
     };
     const handleChangeColumn = (event: SelectChangeEvent) => {
         setSelectedColumn(event.target.value);
@@ -54,8 +51,48 @@ export default function MultiFilterRow(props: Props) {
         setHasChanged(true);
     };
 
+    React.useEffect(() => {
+        if (operators.includes(selectedOperator)) return;
+        console.log("operator nicht enthalten 🐱‍🏍")
+        if (operators === operatorsString) {
+            setSelectedOperator("contains")
+            console.log("string")
+        } else {
+            console.log("number")
+            setSelectedOperator("=")
+        }
+    }, [operators]);
 
     React.useEffect(() => {
+        let operatorList: string[] = []
+        let operator: string = ""
+        for (let i = 0; i < props.columns.length; i++) {
+            console.log("checkString", props.columns[i].field, i, selectedColumn)
+
+            if (selectedColumn === props.columns[i].field) {
+                if (props.columns[i].type !== 'number') {
+                    operatorList = operatorsString
+                    break
+                } else {
+                    operatorList = operatorsNumbers
+                    break
+                }
+            }
+        }
+        if (!operatorList.includes(selectedOperator)) {
+            console.log("CHECK useEffect 🐱‍🏍")
+            if (operators === operatorsString) {
+                operator = "contains"
+                console.log("string")
+            } else {
+                console.log("number")
+                operator = "="
+            }
+        } else {
+            operator = selectedOperator
+            console.log("operator enthalten useEffect", { selectedOperator, operator, operatorList })
+        }
+
         if (!hasChanged) {
             if (!props.filterRow.hasChanged) {
                 return;
@@ -63,46 +100,41 @@ export default function MultiFilterRow(props: Props) {
         }
         const filterRow: FilterRow = {
             column: selectedColumn,
-            operator: selectedOperator,
+            operator: operator,
             inputValue: inputValue,
             hasChanged: true,
         }
         console.log("updateFilterRow in MultiFilterRow aufgerufen + FilterRow", filterRow);
         props.updateFilterRow(filterRow, props.index);
-    }, [selectedOperator, selectedColumn, inputValue])
 
+    }, [selectedOperator, selectedColumn, inputValue])
 
     const deleteFilter = (index: number) => {
         props.deleteFilterRow(index);
         handleChangeColumnDelete(props.filterRow.column);
         console.log("deleteFilter in multiFilterRow aufgerufen mit index", index)
-        // console.log("params of deleted filterRow", props.filterRow, index)
-
+        console.log("params of deleted filterRow", props.filterRow, index)
     };
 
     const checkStringOrNumber = () => {
+        console.log("selectedColumn checkString", selectedColumn)
         for (let i = 0; i < props.columns.length; i++) {
+            console.log("checkString", props.columns[i].field, i, selectedColumn)
+
             if (selectedColumn === props.columns[i].field) {
                 if (props.columns[i].type !== 'number') {
                     setOperators(operatorsString);
+                    console.log("return String")
+
                 } else {
                     setOperators(operatorsNumbers);
+                    console.log("return Number")
+
                 }
             }
         }
+
     };
-
-    React.useEffect(() => {
-        console.log("useEffect Operators 😎")
-        if (operators.includes(selectedOperator)) return;
-        console.log("Operator war nicht in der Liste 😎")
-        if (operators === operatorsString) {
-            setSelectedOperator("contains")
-        } else {
-            setSelectedOperator("=")
-        }
-
-    }, [operators]);
 
     React.useEffect(() => {
         console.log("selectedOperator changed", selectedOperator)
@@ -119,17 +151,15 @@ export default function MultiFilterRow(props: Props) {
         console.log("props.filterRow änderung", props.filterRow, props.index)
     }, [props.filterRow]);
 
-
-
     return (
         <TableRow>
-            <TableCell>
-                <ClearIcon onClick={() => deleteFilter(props.index)} />
+            <TableCell sx={{ padding: 0, paddingTop: 1.5, paddingBottom: 0.5, borderBottom: 'none' }}>
+                <ClearIcon sx={{ marginLeft: 4, size: 'small' }} onClick={() => deleteFilter(props.index)} />
             </TableCell>
-            <TableCell>
-                <FormControl>
-                    <InputLabel id="selectedColumn">Column</InputLabel>
+            <TableCell sx={{ padding: 0, paddingTop: 1.5, paddingBottom: 0.5, borderBottom: 'none' }}>
+                <FormControl variant="standard" sx={{ minWidth: 70 }}>
                     <Select
+                        labelId="demo-simple-select-standard-label"
                         native
                         label="Column"
                         onChange={handleChangeColumn}
@@ -142,9 +172,8 @@ export default function MultiFilterRow(props: Props) {
                     </Select>
                 </FormControl>
             </TableCell>
-            <TableCell>
-                <FormControl>
-                    <InputLabel id="selectedOperator">Operator</InputLabel>
+            <TableCell sx={{ padding: 0, paddingTop: 1.5, paddingBottom: 0.5, borderBottom: 'none' }}>
+                <FormControl variant="standard" sx={{}}>
                     <Select
                         native
                         label="Operator"
@@ -157,14 +186,15 @@ export default function MultiFilterRow(props: Props) {
                     </Select>
                 </FormControl>
             </TableCell>
-            <TableCell>
-                <FormControl sx={{ m: 1, width: '25ch' }} variant="outlined">
-                    <OutlinedInput
+            <TableCell sx={{ padding: 0, paddingTop: 1.5, paddingBottom: 0.5, borderBottom: 'none' }}>
+                <FormControl variant="standard" sx={{}}>
+                    <TextField
+                        variant="standard"
                         id="inputValue"
-
                         value={inputValue}
                         onChange={handleChangeInput}
-                        aria-describedby="outlined-weight-helper-text"
+                        type="text"
+                        placeholder='Filter value'
                         inputProps={{
                             'aria-label': 'inputValue',
                         }}
